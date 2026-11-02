@@ -27,6 +27,12 @@ constexpr UBaseType_t kHostTaskPriority = 10;
 constexpr UBaseType_t kClientTaskPriority = 9;
 constexpr BaseType_t kUsbCore = 0;  // 音声タスク（Core 1）と分ける
 
+// MIDI デバイスが無い状態がこの時間続いたら、ルートポートを入れ直して列挙をやり直す。
+// 電源投入直後に鍵盤の応答が間に合わず列挙に失敗すると、抜き挿しするまで認識されないため。
+// （ESP32-S3 のルートポート電源は USB コントローラ内部の状態で、VBUS の 5V は切れない）
+constexpr TickType_t kRetryInterval = pdMS_TO_TICKS(3000);
+constexpr TickType_t kPortOffTime = pdMS_TO_TICKS(100);
+
 MessageFn s_on_message = nullptr;
 ConnectFn s_on_connect = nullptr;
 
@@ -228,8 +234,9 @@ void client_task(void *) {
     cfg.async.callback_arg = nullptr;
     ESP_ERROR_CHECK(usb_host_client_register(&cfg, &s_client));
 
+    TickType_t no_device_since = xTaskGetTickCount();
     for (;;) {
-        usb_host_client_handle_events(s_client, portMAX_DELAY);
+        usb_host_client_handle_events(s_client, pdMS_TO_TICKS(500));
         if (s_dev.gone) {
             ESP_LOGI(TAG, "device disconnected");
             close_device();
@@ -238,6 +245,19 @@ void client_task(void *) {
             const uint8_t addr = s_dev.pending_addr;
             s_dev.pending_addr = 0;
             open_device(addr);
+        }
+
+        // 列挙失敗からの復帰
+        usb_host_lib_info_t info = {};
+        const bool any_device = usb_host_lib_info(&info) == ESP_OK && info.num_devices > 0;
+        if (s_dev.handle || any_device) {
+            no_device_since = xTaskGetTickCount();
+        } else if (xTaskGetTickCount() - no_device_since >= kRetryInterval) {
+            ESP_LOGI(TAG, "no MIDI device, restarting root port");
+            usb_host_lib_set_root_port_power(false);
+            vTaskDelay(kPortOffTime);
+            usb_host_lib_set_root_port_power(true);
+            no_device_since = xTaskGetTickCount();
         }
     }
 }
