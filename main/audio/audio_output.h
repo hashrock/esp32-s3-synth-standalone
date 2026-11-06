@@ -18,7 +18,10 @@ constexpr uint32_t kDmaDescNum = 4;
 using RenderFn = void (*)(int16_t *out, size_t frames, void *ctx);
 
 struct Stats {
-    uint32_t underruns;       // DMA送信キューが空になった回数（累計）
+    uint32_t missed_deadlines; // render time exceeds one block (cumulative)
+    uint32_t render_cycles_max;
+    uint32_t render_cycles_avg;
+    uint32_t underruns;       // I2S送信イベントキューのoverflow回数（累計、旧名称）
     uint32_t blocks;          // 出力したブロック数（累計）
     uint32_t render_us_max;   // 直近の統計区間でのレンダリング最大時間 [us]
     uint32_t render_us_avg;   // 直近の統計区間でのレンダリング平均時間 [us]

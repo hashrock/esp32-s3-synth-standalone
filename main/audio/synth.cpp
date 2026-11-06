@@ -17,10 +17,14 @@
 
 #include <atomic>
 #include <cmath>
+#include <cassert>
+#include "sdkconfig.h"
 
 #include "audio/audio_output.h"
 #include "audio/drums.h"
 #include "dsp/envelope.h"
+#include "dsp/rhodes.h"
+#include "dsp/limiter.h"
 #include "dsp/fm_operator.h"
 #include "dsp/oscillator.h"
 #include "freertos/FreeRTOS.h"
@@ -33,7 +37,11 @@ constexpr float kFs = static_cast<float>(audio::kSampleRate);
 
 // ---- プリセット ------------------------------------------------------------
 
-enum class Kind : uint8_t { Fm, Square, Drums };
+enum class Kind : uint8_t { Fm, Square, Drums, Rhodes };
+rhodes::Bank<float> s_rhodes_banks[3];
+uint32_t s_tremolo_phase = 0;
+uint32_t s_tremolo_inc = 0;
+dsp::LookaheadLimiter<audio::kBlockFrames> s_limiter;
 
 struct Preset {
     Kind kind = Kind::Fm;
@@ -53,6 +61,8 @@ struct Preset {
     float tine_ratio = 0.0f;       // ティン（第2モジュレータ）の周波数比
     float tine_index_max = 0.0f;   // ベロシティ 127 のときのティン変調指数ピーク [rad]（0 で無効）
     float tine_vel_curve = 0.0f;   // ベロシティ→ティンの指数
+    uint8_t rhodes_model = 0;
+    bool rhodes_tremolo = false;
     float tine_decay_tau = 0.0f;   // ティンの減衰時定数 [s]
 };
 
@@ -112,11 +122,15 @@ constexpr Preset kSquare = {
     .amp_vel_min = 0.5f,
 };
 
-constexpr const Preset *kPresets[kNumPresets] = {&kClassic, &kClavinet, &kDrums, &kSquare};
-constexpr const char *kPresetNames[kNumPresets] = {"Classic", "Clavinet", "808 Drums", "Square"};
+constexpr Preset kRhodes = {.kind = Kind::Rhodes};
+constexpr Preset kBark = {.kind = Kind::Rhodes, .volume = 1.0f, .rhodes_model = 1};
+constexpr Preset kVelvet = {.kind = Kind::Rhodes, .volume = 1.35f, .rhodes_model = 2, .rhodes_tremolo = true};
+constexpr const Preset *kPresets[kNumPresets] = {&kRhodes, &kClavinet, &kDrums, &kSquare, &kClassic, &kBark, &kVelvet};
+constexpr const char *kPresetNames[kNumPresets] = {"Rhodes", "Clavinet", "808 Drums", "Square", "Classic FM", "Bark", "Velvet Trem"};
 constexpr float kTineMaxHz = 18000.0f;  // これを超えるティンはエイリアシングするので鳴らさない
 constexpr float kTineOffLevel = 1.0e-3f;
 constexpr float kIndexLimit = 12.0f;  // radians_to_phase の有効範囲内に収める
+constexpr float kRhodesGain = 2.0f;  // Rhodes-family mixer gain; final peaks are limited
 constexpr float kMasterGain = 0.12f;  // 8音程度の強打ならソフトクリップに入りにくい程度
 constexpr float kSquareGain = 1.0f;   // 矩形波の基準音量（プリセットの volume と掛ける）
 constexpr float kDrumGain = 2.0f;     // ドラムは1ボイスで鳴ることが多いので上げる
@@ -126,6 +140,10 @@ constexpr float kDrumGain = 2.0f;     // ドラムは1ボイスで鳴ること�
 struct Voice {
     Kind kind = Kind::Fm;
     drums::DrumVoice drum;
+    rhodes::Voice rhodes;
+    float rhodes_last = 0.0f;
+    float rhodes_tail = 0.0f;
+    bool rhodes_tremolo = false;
     dsp::FmOperator car;
     dsp::FmOperator mod;
     dsp::FmOperator tine;
@@ -140,8 +158,8 @@ struct Voice {
     bool gate = false;        // 鍵盤が押されているか
     bool sustained = false;   // 鍵盤は離したがサステインペダルで保持中
 
-    bool idle() const { return kind == Kind::Drums ? drum.idle() : amp_env.idle(); }
-    float level() const { return kind == Kind::Drums ? drum.level() : amp_env.level(); }
+    bool idle() const { return kind == Kind::Rhodes ? rhodes.idle() : kind == Kind::Drums ? drum.idle() : amp_env.idle(); }
+    float level() const { return kind == Kind::Rhodes ? rhodes.level() : kind == Kind::Drums ? drum.level() : amp_env.level(); }
 };
 
 Voice s_voices[kNumVoices];
@@ -150,7 +168,7 @@ float s_note_hz[128];
 
 std::atomic<int> s_active{0};
 std::atomic<uint32_t> s_steals{0};
-std::atomic<uint32_t> s_clipped{0};       // ソフトクリップ域（|x| > kClipThreshold）に入ったサンプル数（累計）
+std::atomic<uint32_t> s_clipped{0};       // リミッター前の上限超過サンプル数（累計）
 std::atomic<uint32_t> s_peak_milli{0};    // 区間ピーク（クリップ前、1.0 = フルスケール）×1000
 
 // ---- イベントキュー --------------------------------------------------------
@@ -164,8 +182,8 @@ struct Event {
 
 QueueHandle_t s_queue = nullptr;
 bool s_sustain = false;  // 音声タスク内でのみ触る
-int s_preset = 0;        // 音声タスク内でのみ書く（新しいノートから反映）
-std::atomic<int> s_preset_shown{0};
+int s_preset = kDefaultPreset;        // 音声タスク内でのみ書く（新しいノートから反映）
+std::atomic<int> s_preset_shown{kDefaultPreset};
 
 bool post(const Event &ev) {
     return s_queue && xQueueSend(s_queue, &ev, 0) == pdTRUE;
@@ -176,8 +194,25 @@ bool post(const Event &ev) {
 Voice *find_voice_for(uint8_t note) {
     // 1) 同じノートが鳴っていれば再利用（再打鍵）
     for (auto &v : s_voices)
-        if (!v.idle() && v.note == note) return &v;
+        if (!v.idle() && v.note == note &&
+            (kPresets[s_preset]->kind != Kind::Rhodes || v.kind == Kind::Rhodes)) return &v;
 
+    // Physical polyphony is separately limited until target profiling passes.
+#ifndef CONFIG_EPIANO_RHODES_STRESS
+    if (kPresets[s_preset]->kind == Kind::Rhodes) {
+        int count = 0;
+        Voice *oldest = nullptr;
+        for (auto &v : s_voices) {
+            if (v.kind != Kind::Rhodes || v.idle()) continue;
+            ++count;
+            if (!oldest || v.started < oldest->started) oldest = &v;
+        }
+        if (count >= CONFIG_EPIANO_RHODES_VOICES && oldest) {
+            s_steals.fetch_add(1, std::memory_order_relaxed);
+            return oldest;
+        }
+    }
+#endif
     // 2) 空きボイス
     for (auto &v : s_voices)
         if (v.idle()) return &v;
@@ -219,6 +254,19 @@ void voice_note_on(uint8_t note, uint8_t velocity) {
 
     if (p.kind == Kind::Drums) {
         drum_note_on(v, note, vel, p.volume);
+        return;
+    }
+    if (p.kind == Kind::Rhodes) {
+        const float previous = v->kind == Kind::Rhodes && !v->idle() ? v->rhodes_last * v->amp : 0.0f;
+        v->amp = kRhodesGain * p.volume;
+        v->rhodes_tail = previous / v->amp;
+        v->rhodes_tremolo = p.rhodes_tremolo;
+        v->kind = p.kind;
+        v->rhodes.note_on(s_rhodes_banks[p.rhodes_model], note, velocity);
+        v->note = note;
+        v->gate = true;
+        v->sustained = false;
+        v->started = ++s_note_counter;
         return;
     }
     if (v->kind != p.kind) {
@@ -285,6 +333,7 @@ void voice_note_on(uint8_t note, uint8_t velocity) {
 void voice_release(Voice &v) {
     v.gate = false;
     v.sustained = false;
+    if (v.kind == Kind::Rhodes) v.rhodes.note_off();
     v.amp_env.gate_off();
     v.idx_env.gate_off();
 }
@@ -336,8 +385,8 @@ void process_events() {
     }
 }
 
-// これを超えるとソフトクリップの歪みが目立ち始める（x=0.7 で約 -5% の圧縮）
-constexpr float kClipThreshold = 0.7f;
+// リミッター適用前の入力上限超過を数える。出力をクリップする閾値ではない。
+constexpr float kClipThreshold = dsp::LookaheadLimiter<audio::kBlockFrames>::kCeiling;
 
 // PolyBLEP: 矩形波の不連続点を滑らかにしてエイリアシングを減らす
 inline float poly_blep(float t, float dt, float inv_dt) {
@@ -387,17 +436,17 @@ void render_square(Voice &v, float *mix, size_t frames) {
     }
 }
 
-// 安全用の3次ソフトクリップ: |x| <= 1.5 で滑らかに ±1 へ
-inline float soft_clip(float x) {
-    if (x > 1.5f) return 1.0f;
-    if (x < -1.5f) return -1.0f;
-    return x - (4.0f / 27.0f) * x * x * x;
-}
-
 }  // namespace
 
 void init() {
     dsp::init_sine_table();
+    s_limiter.init(kFs);
+    // 2x for 2–5 modes, 4x for the highest one-mode notes.
+    s_rhodes_banks[0].init(kFs, 4, true);
+    s_rhodes_banks[1].init(kFs, 4, true, rhodes::kBark);
+    s_rhodes_banks[2].init(kFs, 4, true, rhodes::kVelvet);
+    s_tremolo_phase = 0;
+    s_tremolo_inc = dsp::hz_to_inc(4.2f, kFs);
     for (int n = 0; n < 128; ++n) s_note_hz[n] = 440.0f * std::pow(2.0f, (n - 69) / 12.0f);
     s_queue = xQueueCreate(64, sizeof(Event));
 }
@@ -413,17 +462,24 @@ const char *preset_name(int index) { return kPresetNames[index % kNumPresets]; }
 bool sustain(bool on) { return post({EvType::Sustain, 0, static_cast<uint8_t>(on ? 1 : 0)}); }
 
 void render(int16_t *out, size_t frames, void *) {
+    assert(frames == audio::kBlockFrames);
     process_events();
 
     float mix[audio::kBlockFrames];
     float drum_mix[audio::kBlockFrames];
-    for (size_t i = 0; i < frames; ++i) mix[i] = drum_mix[i] = 0.0f;
+    float trem_mix[audio::kBlockFrames];
+    bool has_tremolo = false;
+    for (size_t i = 0; i < frames; ++i) mix[i] = drum_mix[i] = trem_mix[i] = 0.0f;
 
     int active = 0;
     for (auto &v : s_voices) {
         if (v.idle()) continue;
         ++active;
         switch (v.kind) {
+        case Kind::Rhodes:
+            v.rhodes.render_mixed(v.rhodes_tremolo ? trem_mix : mix, frames, v.amp, v.rhodes_tail, v.rhodes_last);
+            has_tremolo |= v.rhodes_tremolo;
+            break;
         case Kind::Fm:
             render_fm(v, mix, frames);
             break;
@@ -436,6 +492,17 @@ void render(int16_t *out, size_t frames, void *) {
         }
     }
     s_active.store(active, std::memory_order_relaxed);
+    const uint32_t next_phase = s_tremolo_phase + s_tremolo_inc * static_cast<uint32_t>(frames);
+    if (has_tremolo && frames) {
+        // Shared, free-running LFO; interpolate two sine-table reads per block.
+        float gain = .7f + .3f * dsp::sine(s_tremolo_phase);
+        const float step = (.7f + .3f * dsp::sine(next_phase) - gain) / frames;
+        for (size_t i = 0; i < frames; ++i) {
+            mix[i] += trem_mix[i] * gain;
+            gain += step;
+        }
+    }
+    s_tremolo_phase = next_phase;
 
     float peak = 0.0f;
     uint32_t clipped = 0;
@@ -444,8 +511,10 @@ void render(int16_t *out, size_t frames, void *) {
         const float ax = x < 0.0f ? -x : x;
         if (ax > peak) peak = ax;
         if (ax > kClipThreshold) ++clipped;
-        out[i] = static_cast<int16_t>(soft_clip(x) * 32767.0f);
+        mix[i] = x;
     }
+    s_limiter.process(mix, peak);
+    for (size_t i=0; i<frames; ++i) out[i] = static_cast<int16_t>(mix[i]*32767.0f);
     if (clipped) s_clipped.fetch_add(clipped, std::memory_order_relaxed);
     const uint32_t pm = static_cast<uint32_t>(peak * 1000.0f);
     if (pm > s_peak_milli.load(std::memory_order_relaxed)) s_peak_milli.store(pm, std::memory_order_relaxed);

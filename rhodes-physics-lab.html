@@ -1,0 +1,83 @@
+<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rhodes · Physical Modeling Lab</title><style>
+:root{color-scheme:dark;--bg:#101419;--panel:#1b222b;--line:#374251;--ink:#eef3f5;--muted:#a7b5be;--accent:#8ed1c0}*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,sans-serif;margin:0 auto;padding:25px 18px;max-width:1020px}h1{font-size:27px;letter-spacing:-.5px;margin:0}h2{font-size:16px;margin:0 0 9px}p{color:var(--muted);margin:5px 0 17px}small{color:var(--muted)}.top{display:flex;align-items:start;justify-content:space-between;gap:16px}.pill{font-size:11px;border:1px solid #5b7671;color:#a4e5d4;border-radius:40px;padding:5px 9px;white-space:nowrap}.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.mode{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:9px;text-align:left;cursor:pointer;padding:13px 15px}.mode[aria-pressed=true]{border:1px solid var(--accent);background:#223830}.mode strong{display:block;font-size:14px}.mode span{font-size:12px;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{border:1px solid var(--line);border-radius:11px;padding:17px;background:var(--panel)}.params{display:grid;grid-template-columns:1fr 1fr;gap:13px 18px}label{display:block;color:var(--muted);font-size:12px}label b{float:right;color:var(--ink);font-variant-numeric:tabular-nums}input[type=range]{display:block;width:100%;margin-top:8px;accent-color:var(--accent)}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:15px 0}.button{border:1px solid #667981;background:#2a3940;color:white;border-radius:8px;padding:9px 14px;cursor:pointer}.button:disabled{opacity:.5}.button.primary{background:#285e50;border-color:#539582}.keyboard{height:153px;display:flex;position:relative;margin:14px 0;touch-action:none;user-select:none}.key{background:#e4e8e7;color:#23343b;border:1px solid #92a1aa;border-radius:0 0 6px 6px;flex:1;min-width:0;position:relative;cursor:pointer;display:flex;align-items:end;justify-content:center;padding-bottom:8px;font-size:11px}.key.black{position:absolute;top:0;height:60%;width:4%;background:#1b252d;border-color:#0e151a;z-index:2;color:#e2e9ec;padding:0;border-radius:0 0 5px 5px}.key.on{background:#8ed1c0}.key.black.on{background:#417c71}.graphs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}canvas{width:100%;height:178px;background:#0e161d;border-radius:6px;display:block}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:#b9c8ca}.details{margin-top:12px}.details summary{cursor:pointer;font-weight:600}.alert{font-size:12px;color:#d0dcae}.row{display:flex;justify-content:space-between;gap:12px}.metric{color:#b7e0d7}a{color:#a4dded}footer{margin-top:25px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted)}@media(max-width:750px){.modes{grid-template-columns:1fr}.grid,.graphs{grid-template-columns:1fr}.params{grid-template-columns:1fr 1fr}.top{display:block}.keyboard{height:125px}}
+</style></head><body><div class="top"><div><h1>Rhodes · Physical Modeling Lab</h1><p>前作のModal音を残し、接触力 → 片持ち梁のモード振動 → 磁束の時間変化を数値シミュレーションして比較。</p></div><div class="pill">Web Audio · single-file</div></div>
+<div class="modes" id="modes"><button class="mode" data-mode="original" aria-pressed="false"><strong>01 · Original Modal</strong><span>最初に好評だった音。比較基準（前作と同じ合成式）。</span></button><button class="mode" data-mode="linear" aria-pressed="true"><strong>02 · Hammer → Tine</strong><span>打鍵の接触力とTineの減衰振動を物理計算。線形ピックアップ。</span></button><button class="mode" data-mode="physical" aria-pressed="false"><strong>03 · Hammer → Tine → Pickup</strong><span>同じTine振動に、控えめな非線形磁束モデルを適用。</span></button></div>
+<div class="grid"><div class="panel"><h2>打鍵と振動体</h2><div class="params"><label>Velocity <b id="velocityVal"></b><input type="range" id="velocity" min="15" max="127" value="78"></label><label>Hammer stiffness <b id="stiffnessVal"></b><input type="range" id="stiffness" min="0" max="100" value="43"></label><label>Contact damping <b id="lossVal"></b><input type="range" id="loss" min="0" max="100" value="46"></label><label>Tine damping <b id="dampingVal"></b><input type="range" id="damping" min="0" max="100" value="35"></label></div></div><div class="panel"><h2>ピックアップ・出力</h2><div class="params"><label>Pickup gap <b id="gapVal"></b><input type="range" id="gap" min="0" max="100" value="66"></label><label>Pickup offset <b id="offsetVal"></b><input type="range" id="offset" min="0" max="100" value="55"></label><label>Pickup nonlinear mix <b id="nonlinVal"></b><input type="range" id="nonlin" min="0" max="100" value="22"></label><label>Output low-pass <b id="cutoffVal"></b><input type="range" id="cutoff" min="0" max="100" value="61"></label></div></div></div>
+<div class="controls"><button class="button primary" id="compare">C4を3方式で比較</button><button class="button" id="single">C4を試聴</button><button class="button" id="stop">停止</button><span id="status" class="alert">鍵盤 / A W S E D F T G Y H U J K で演奏できます。</span></div><div id="keyboard" class="keyboard"></div>
+<div class="graphs"><div class="panel"><div class="row"><h2>音声波形</h2><small>0–80 ms</small></div><canvas id="wave" width="650" height="200"></canvas></div><div class="panel"><div class="row"><h2>物理状態</h2><small>ハンマー接触力 / Tine変位</small></div><canvas id="physics" width="650" height="200"></canvas></div></div>
+<details class="panel details"><summary>モデルと限界（クリックで展開）</summary><p>02/03は同一の力学計算です。接触力は Hunt–Crossley型の非線形ばね・減衰、TineはEuler–Bernoulli片持ち梁の有限個の固有モードに射影した強制減衰振動子として計算。<b>接触を各サンプルで判定して双方向に力を加えます。</b> 鍵盤を離すとダンパーの強い減衰を別に適用します。</p><p>03のピックアップは位置依存の磁束 Φ(x) と誘導電圧 −dΦ/dt を近似。発散を防ぐクリップではなく、距離と変位の比を実用範囲に正規化した滑らかな有界関数を使います。線形成分と混ぜて過度の歪みを避けています。</p><p><b>厳密な論文再現ではありません。</b> Tineの径・長さ・先端ウェイト・モード形状・接触位置・磁場マップ・トーンバーの結合、実機計測によるキャリブレーションは省略しています。1次〜4次の梁モード周波数比は理想的な片持ち梁の近似値です。ノートごとの実機の非整数倍音比と一致する保証はありません。シミュレーションは発音開始時に4倍オーバーサンプリングし、各ノートの波形を生成します（リアルタイム逐次演算のAudioWorklet版ではありません）。</p><pre>m_h ẍ_h = −F
+q̈_j + 2γ_j q̇_j + ω_j² q_j = φ_j F/m_j
+δ = x_h − Σφ_j q_j
+F = max(0, k·δ^1.5·(1 + η·δ̇)) （δ > 0）
+V = −dΦ(x_tine)/dt</pre><p>音色の厳密性よりも「異なる打鍵速度で接触時間・励起モードが変わるか」を観察する用途を重視しています。</p></details>
+<footer><small>参考: <a href="https://www.dafx17.eca.ed.ac.uk/papers/DAFx17_paper_79.pdf" target="_blank" rel="noopener">Pfeifle, DAFx 2017</a> / <a href="https://afalaize.github.io/posts/rhodes/" target="_blank" rel="noopener">Falaize &amp; Hélie, Rhodes simulation</a>。各係数は実測同定値ではありません。外部依存なし。イヤホン推奨。</small></footer>
+<script>
+(()=>{'use strict';
+const SR=44100,OS=4,FS=SR*OS,DT=1/FS,SECONDS=4.2,TAU=Math.PI*2;
+let ctx, mode='linear', last=null, timers=[], seq=0;const active=new Map(), pressed=new Set();const $=id=>document.getElementById(id);const val=id=>+$ (id).value/100;
+const knobNames={velocity:v=>v,stiffness:v=>v+'%',loss:v=>v+'%',damping:v=>v+'%',gap:v=>(.9+1.9*v/100).toFixed(2)+' mm',offset:v=>((v-50)*.028).toFixed(2)+' mm',nonlin:v=>v+'%',cutoff:v=>Math.round(1700+v*v*.48)+' Hz'};
+for(const id in knobNames){const el=$(id);const update=()=>$(id+'Val').textContent=knobNames[id](+el.value);el.addEventListener('input',update);update()}
+function p(){return {v:+$('velocity').value/127,k:val('stiffness'),loss:val('loss'),d:val('damping'),gap:val('gap'),offset:val('offset'),nonlin:val('nonlin'),cutoff:1700+val('cutoff')**2*4800}}
+function original(midi,a){const f=440*2**((midi-69)/12),N=Math.floor(SR*SECONDS),out=new Float32Array(N),dec=[2.6,.92,.28,.13,.08],rat=[1,2.01,3.93,6.17,9.12],amps=[1,.32,.18,.09,.04];let lp=0;for(let i=0;i<N;i++){let t=i/SR,x=0;for(let j=0;j<rat.length;j++){if(f*rat[j]>=SR*.48)break;x+=amps[j]*(j?1.075*a.v:1)*Math.sin(TAU*f*rat[j]*t+j*.23)*Math.exp(-t*(.35+1.4*a.d)/dec[j])}lp+=.006*(x-lp);out[i]=Math.tanh((x-lp)*.78)*(.55+.45*a.v)*(1-Math.exp(-t*550))}return{out,force:new Float32Array(400),disp:new Float32Array(400),peakForce:0,contactMs:0}}
+function simulate(midi,a,pickup){const f=440*2**((midi-69)/12),N=Math.floor(SR*SECONDS),out=new Float32Array(N),traceLen=Math.ceil(SR*.08),force=new Float32Array(traceLen),disp=new Float32Array(traceLen);
+// Ideal cantilever (Euler-Bernoulli) beta_n^2 / beta_1^2 frequency ratios.
+const ratios=[1,6.267,17.548,34.386,56.84],shape=[1,-.43,.2,-.1,.05];
+let ws=[],masses=[],q=[],v=[],gamma=[],sh=[];
+for(let j=0;j<ratios.length;j++){let fj=f*ratios[j];if(fj>FS*.10 || fj>11000)break;ws.push(TAU*fj);masses.push(.004*(1+.85*j));q.push(0);v.push(0);gamma.push((.42+2.0*a.d)*(j===0?1:Math.pow(5,j)*.25));sh.push(shape[j])}
+const massHammer=.010,k=2.5e7*Math.exp((a.k-.5)*2.3),eta=(.01+3.2*a.loss); // stiffness N/m^1.5
+// Hammer starts at gap before impact and travels toward tine (m/s).
+let hx=-.0007,hv=.35+2.8*a.v,peakForce=0,contactSamples=0,prevOutput=0,prevX=0,prevFlux=0,lp=0,dc=0;
+const gap=.0009+.0019*a.gap;const offset=(a.offset-.5)*.0014;
+// Normalize output to a physical reference displacement-speed scale, not per-note peak.
+const scale=1/(TAU*220*.00040);
+const cutoffAlpha=1-Math.exp(-TAU*a.cutoff/SR);
+for(let i=0;i<N;i++){
+ let forceSum=0, finalX=0;
+ for(let sub=0;sub<OS;sub++){
+  let tx=0,tv=0;for(let j=0;j<q.length;j++){tx+=sh[j]*q[j];tv+=sh[j]*v[j]}
+  const compression=hx-tx,relativeVelocity=hv-tv;
+  // Hunt-Crossley compression-dependent contact dissipation; never tensile force.
+  let F= compression>0 ? k*Math.pow(compression,1.5)*Math.max(0,1+eta*relativeVelocity) : 0;
+  F=Math.min(F,150);
+  if(F>0.005){contactSamples++;peakForce=Math.max(peakForce,F)}
+  hv+=(-F/massHammer)*DT;hx+=hv*DT;
+  for(let j=0;j<q.length;j++){
+   const aj=(sh[j]*F/masses[j])-2*gamma[j]*v[j]-ws[j]*ws[j]*q[j];
+   v[j]+=aj*DT;q[j]+=v[j]*DT;
+  }
+  forceSum+=F;
+ }
+ let x=0,dx=0;for(let j=0;j<q.length;j++){x+=sh[j]*q[j];dx+=sh[j]*v[j]}
+ // Linear pickup V = velocity (Faraday linearized about equilibrium).
+ let voltage=dx*scale;
+ if(pickup){
+   // Smooth, bounded, distance-dependent flux; 2D pickup asymmetry is reduced to an offset.
+   // Differentiation with respect to time via dPhi/dx * dx/dt, no finite difference HF boost.
+   const t=(x-offset)/gap;
+   const phiPrime=2*t/(gap*Math.pow(1+t*t,2));
+   const nominalDerivative=(-2*offset/gap)/Math.pow(1+(offset/gap)**2,2)/gap;
+   const factor=nominalDerivative===0?1:phiPrime/nominalDerivative;
+   const boundedFactor=Math.max(-3,Math.min(3,factor));
+   voltage=voltage*((1-a.nonlin)+a.nonlin*boundedFactor);
+ }
+ // RC-like loading / simple DC rejection, fixed gain prevents hard clipping of dynamics.
+ lp+=cutoffAlpha*(voltage-lp);dc+=.0006*(lp-dc);const sample=(lp-dc)*.25;
+ out[i]=Math.tanh(sample*.65)*.62;
+ if(i<traceLen){force[i]=forceSum/OS;disp[i]=x*1000}
+ }
+ return{out,force,disp,peakForce,contactMs:contactSamples/FS*1000};
+}
+function synth(midi,a,m){return m==='original'?original(midi,a):simulate(midi,a,m==='physical')}
+function audio(){ctx??=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});if(ctx.state==='suspended')ctx.resume();return ctx}
+function stopNote(midi){const a=active.get(midi);if(a&&ctx){const t=ctx.currentTime;a.gain.gain.cancelScheduledValues(t);a.gain.gain.setTargetAtTime(.00001,t,.07);try{a.src.stop(t+.45)}catch{}active.delete(midi)}document.querySelectorAll('[data-midi="'+midi+'"]').forEach(k=>k.classList.remove('on'))}
+function start(midi,which=mode){stopNote(midi);const ac=audio();const a=p(),result=synth(midi,a,which),b=ac.createBuffer(1,result.out.length,SR);b.copyToChannel(result.out,0);const src=ac.createBufferSource(),gain=ac.createGain();src.buffer=b;src.connect(gain);gain.connect(ac.destination);gain.gain.value=.73;src.start();active.set(midi,{src,gain});src.onended=()=>{if(active.get(midi)?.src===src)active.delete(midi)};document.querySelectorAll('[data-midi="'+midi+'"]').forEach(k=>k.classList.add('on'));last=result;render();$('status').textContent=which==='original'?'Original Modal（比較基準）':`接触 ${result.contactMs.toFixed(2)} ms · 最大接触力 ${result.peakForce.toFixed(1)} N`}
+function stopAll(){timers.forEach(clearTimeout);timers=[];seq++;for(const midi of [...active.keys()])stopNote(midi);pressed.clear()}
+const white=[0,2,4,5,7,9,11,12,14,16,17,19,21,23,24],names=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],board=$('keyboard');for(let i=0;i<white.length;i++){let n=48+white[i],k=document.createElement('button');k.className='key';k.dataset.midi=n;k.textContent=names[n%12]+(Math.floor(n/12)-1);board.append(k)}for(let n=49;n<72;n++){if(![1,3,6,8,10].includes(n%12))continue;let pos=white.findIndex(w=>w===n-49);if(pos<0)continue;let k=document.createElement('button');k.className='key black';k.dataset.midi=n;k.style.left=`calc(${(pos+1)/15*100}% - 2%)`;board.append(k)}
+board.addEventListener('pointerdown',e=>{let k=e.target.closest('[data-midi]');if(!k)return;e.preventDefault();k.setPointerCapture(e.pointerId);start(+k.dataset.midi)});board.addEventListener('pointerup',e=>{let k=e.target.closest('[data-midi]');if(k)stopNote(+k.dataset.midi)});board.addEventListener('pointercancel',e=>{let k=e.target.closest('[data-midi]');if(k)stopNote(+k.dataset.midi)});
+const keyMap='awsedftgyhujk',midiMap=[60,61,62,63,64,65,66,67,68,69,70,71,72];window.addEventListener('keydown',e=>{if(e.repeat||e.target.matches('input,button,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;const index=keyMap.indexOf(e.key.toLowerCase());if(index<0)return;e.preventDefault();if(!pressed.has(index)){pressed.add(index);start(midiMap[index])}});window.addEventListener('keyup',e=>{let i=keyMap.indexOf(e.key.toLowerCase());if(i>=0){pressed.delete(i);stopNote(midiMap[i])}});window.addEventListener('blur',stopAll);
+$('modes').addEventListener('click',e=>{const btn=e.target.closest('[data-mode]');if(!btn)return;mode=btn.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));});$('single').onclick=()=>{stopAll();start(60)};$('stop').onclick=stopAll;
+$('compare').onclick=()=>{stopAll();const current=++seq;const modes=['original','linear','physical'];modes.forEach((m,i)=>{timers.push(setTimeout(()=>{if(seq!==current)return;stopNote(60);start(60,m)},i*1450));timers.push(setTimeout(()=>{if(seq===current)stopNote(60)},i*1450+1250))})};
+function drawSeries(canvas,samples,color,range){const c=$(canvas),g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#0e161d';g.fillRect(0,0,w,h);g.strokeStyle='#2c3c49';g.lineWidth=1;g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();let max=range||Math.max(.00001,...samples.map(Math.abs));g.strokeStyle=color;g.lineWidth=1.5;g.beginPath();for(let x=0;x<w;x++){let s=samples[Math.min(samples.length-1,Math.floor(x/w*samples.length))]||0,y=h/2-(s/max)*h*.42;if(x===0)g.moveTo(x,y);else g.lineTo(x,y)}g.stroke()}
+function render(){if(!last)return;drawSeries('wave',last.out.subarray(0,Math.floor(SR*.08)),'#9fddd1');const c=$('physics'),g=c.getContext('2d'),w=c.width,h=c.height;g.fillStyle='#0e161d';g.fillRect(0,0,w,h);const n=last.force.length;if(!n)return;const maxF=Math.max(1,...last.force),maxX=Math.max(.01,...last.disp.map(Math.abs));const plot=(arr,scale,color,base)=>{g.beginPath();g.strokeStyle=color;g.lineWidth=1.8;for(let x=0;x<w;x++){const v=arr[Math.min(n-1,Math.floor(x/w*n))],y=base-v/scale*40;if(x===0)g.moveTo(x,y);else g.lineTo(x,y)}g.stroke()};plot(last.force,maxF,'#f5c58b',65);plot(last.disp,maxX,'#8ed1c0',155);g.font='12px system-ui';g.fillStyle='#f5c58b';g.fillText('接触力 (N)',12,18);g.fillStyle='#8ed1c0';g.fillText('Tine先端変位 (mm)',12,113)}
+last=simulate(60,p(),false);render();
+})();</script></body></html>

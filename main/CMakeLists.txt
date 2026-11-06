@@ -9,3 +9,6 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES esp_driver_i2s esp_timer
 )
+
+# Keep template literals alongside the hot IRAM functions (Xtensa l32r range).
+set_source_files_properties(audio/synth.cpp PROPERTIES COMPILE_OPTIONS "-mtext-section-literals")

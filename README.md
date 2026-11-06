@@ -1,15 +1,23 @@
-# ESP32-S3 FM Electric Piano
+# ESP32-S3 Physical Modeling Electric Piano
 
-Freenove ESP32-S3（16MB Flash）+ PCM5102A によるスタンドアロンFMエレピ音源。
+Freenove ESP32-S3（16MB Flash）+ PCM5102A によるスタンドアロンエレピ音源。初期音色は非線形ピックアップを強めた物理モデリング **Bark**。
 
-**現在の状態：Phase 4（完成度向上）** — KORG microKEY Air 37 を USB-OTG 端子につなぎ、16音ポリフォニーで演奏できる。モジュレーションホイールで音色を切り替える。
+**現在の状態：Rhodes 移植・実機負荷計測済み** — USB MIDI と既存の16ボイス管理を維持。物理音源を軽量化して最大8音、他音色は16音。`idf.py menuconfig` → `E-piano` から物理音源の上限を変更できる。モジュレーションホイールで音色を切り替える。
 
-| ホイール位置 | 音色 | 内容 |
-|---|---|---|
-| 0〜31 | Classic | FM エレピ（1:1、変調指数が素早く減衰） |
-| 32〜63 | Clavinet | 深い FM + 1:3 の倍音。離すとすぐミュート |
-| 64〜95 | 808 Drums | TR-808 風ドラム（下表） |
-| 96〜127 | Square | 矩形波（PolyBLEP）。サステイン最大・リリースなし |
+| ホイール位置 | Program Change（0始まり） | 音色 | 内容 |
+|---|---:|---|---|
+| 0〜18 | 0 | Rhodes | 物理モデリングの基準音色。軽いドライブ |
+| 19〜36 | 1 | Clavinet | 深い FM + 1:3 の倍音。離すとすぐミュート |
+| 37〜54 | 2 | 808 Drums | TR-808 風ドラム（下表） |
+| 55〜73 | 3 | Square | 矩形波（PolyBLEP）。サステイン最大・短いリリース |
+| 74〜91 | 4 | Classic FM | 比較用の従来 FM エレピ |
+| 92〜109 | 5 | Bark | 近接・偏心ピックアップ。弱打は丸く、強打は明るい音。ドライブなし（初期音色） |
+| 110〜127 | 6 | Velvet Trem | 丸い音、長い余韻、4.2 Hzの滑らかなトレモロ |
+
+最終出力は先読みリミッターでピークを制御（追加遅延1.33 ms）。
+
+Rhodes系3音色は合計8音まで。Program Changeの既存番号0〜4は維持し、
+ホイール範囲は7音色に均等分割。切り替え前から鳴っている音には元の音色設定を維持する。
 
 808 Drums の鍵盤割り当て（どのオクターブでも同じ）：
 
@@ -19,13 +27,13 @@ Freenove ESP32-S3（16MB Flash）+ PCM5102A によるスタンドアロンFMエ�
 
 クローズドハットでオープンハットが止まる（チョーク）。音量は各プリセットの `.volume` で調整する。
 
-Phase 1〜3 は実機で動作確認済み（2026-11-03）。
+Phase 1〜3 の旧 FM ファームウェアは実機で動作確認済み（2026-11-03）。物理音源の実装・数値検証・計測手順は [RHODES_IMPLEMENTATION.md](RHODES_IMPLEMENTATION.md)、実機の負荷比較は [RHODES_BENCHMARK.md](RHODES_BENCHMARK.md) を参照。
 
 ## 接続
 
 - **UART 側 USB-C**：PC（書き込み・ログ）またはモバイルバッテリー（給電）
 - **USB-OTG 側 USB-C**：microKEY Air 37（VID 0944 / PID 0136）。UART 側から給電した状態で、OTG 側から microKEY へ給電されることを実機で確認済み
-- MIDI は全チャンネル受信。Note On/Off、CC1（音色切り替え）、CC64（サステイン）、CC120/123（全音停止）、Program Change 0〜3（音色切り替え）に対応
+- MIDI は全チャンネル受信。Note On/Off、CC1（音色切り替え）、CC64（サステイン）、CC120/123（全音停止）、Program Change 0〜6（音色切り替え）に対応
 - 抜き挿し（切断・再接続）に対応。切断時は鳴っている音を止める
 
 ## 開発環境
@@ -95,7 +103,7 @@ I (1234) main: blocks=750 underruns=0 (+0) render avg=12 us max=20 us (budget 13
 | 項目 | 意味 |
 |---|---|
 | `blocks` | 出力した 64 フレームブロック数（累計、毎秒 750 増えれば正常） |
-| `underruns` | DMA 送信キューが空になった回数（累計）。`(+N)` は直近1秒の増分 |
+| `underruns` | I2S 送信イベントキューの overflow 回数（旧名称、DAC underrun の直接計測ではない）。`(+N)` は直近1秒の増分 |
 | `render avg/max` | 1ブロックの生成時間 |
 | `budget` | 1ブロックの時間（64 / 48000 = 1333us） |
 | `load` | 平均生成時間 / budget |
@@ -132,7 +140,7 @@ main/
 - FM：`out = A(t) * sin(carrier + I(t) * sin(modulator) + T(t) * sin(tine))`。変調指数 I(t) は専用エンベロープで打鍵直後に大きく、素早く減衰。tine は第2モジュレータ（Clavinet で使用）
 - Voice stealing：同じノート → 空き → リリース中で最も小さい → 最も古い、の順。奪ったボイスは位相・レベルを連続させてクリックを防ぐ
 - 音色パラメータは `synth.cpp` の `kClassic` / `kClavinet` / `kDrums` / `kSquare`、ドラムの各音は `drums.cpp` の `trigger()`
-- サチュレーションは試したが不自然だったため不採用
+- FM のサチュレーションは不採用。物理 Rhodes は試作 mode 02 の出力 tanh を維持（テーブル補間）。
 
 ### テストシーケンス（ループ）
 
@@ -158,3 +166,14 @@ I (14306) main: midi=on pkts=242 preset=Classic voices=8 peak=0.41 (-7.7 dBFS) c
 
 - GPIO16/17/18 が Freenove ESP32-S3 で他機能（PSRAM・カメラ等）と競合しないか（公式ピン配置で要確認）
 - PCM5102A モジュールの VIN 電圧・設定端子のデフォルト状態
+
+## Web音色調整版
+
+[web-lab/README.md](web-lab/README.md) のBark Tone Labで、現在の物理モデルをブラウザから試奏・調整できます。
+
+```sh
+cd web-lab
+npm run preview
+```
+
+`http://127.0.0.1:4173` を開き「音を有効にする」を押してください。8音ポリ、3プリセット、A/B比較、ベロシティ試奏、Web MIDI、JSON保存・読込、C++設定書き出しに対応します。

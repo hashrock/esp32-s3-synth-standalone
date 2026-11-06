@@ -6,6 +6,7 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_cpu.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -31,8 +32,11 @@ std::atomic<uint32_t> s_blocks{0};
 std::atomic<uint32_t> s_render_us_max{0};
 std::atomic<uint32_t> s_render_us_sum{0};
 std::atomic<uint32_t> s_render_count{0};
+std::atomic<uint32_t> s_missed_deadlines{0};
+std::atomic<uint32_t> s_cycles_max{0};
+std::atomic<uint32_t> s_cycles_sum{0};
 
-// ISRコンテキストで呼ばれる: DMA送信キューが空になった＝アンダーラン
+// ISR: 送信イベントキューの overflow。物理的なDAC underrunの直接計測ではない。
 bool IRAM_ATTR on_send_q_ovf(i2s_chan_handle_t, i2s_event_data_t *, void *) {
     s_underruns.fetch_add(1, std::memory_order_relaxed);
     return false;
@@ -53,9 +57,16 @@ void audio_task(void *) {
 
     for (;;) {
         const int64_t t0 = esp_timer_get_time();
+        const uint32_t c0 = esp_cpu_get_cycle_count();
         s_render(mono, kBlockFrames, s_render_ctx);
+        const uint32_t cycles = esp_cpu_get_cycle_count() - c0;
+        s_cycles_sum.fetch_add(cycles, std::memory_order_relaxed);
+        if (cycles > s_cycles_max.load(std::memory_order_relaxed))
+            s_cycles_max.store(cycles, std::memory_order_relaxed);
         const uint32_t dt = static_cast<uint32_t>(esp_timer_get_time() - t0);
 
+        if (dt > 1000000ULL * kBlockFrames / kSampleRate)
+            s_missed_deadlines.fetch_add(1, std::memory_order_relaxed);
         uint32_t prev = s_render_us_max.load(std::memory_order_relaxed);
         if (dt > prev) s_render_us_max.store(dt, std::memory_order_relaxed);
         s_render_us_sum.fetch_add(dt, std::memory_order_relaxed);
@@ -125,12 +136,16 @@ esp_err_t start(RenderFn render, void *ctx) {
 
 Stats take_stats() {
     Stats st{};
+    st.missed_deadlines = s_missed_deadlines.load(std::memory_order_relaxed);
+    st.render_cycles_max = s_cycles_max.exchange(0, std::memory_order_relaxed);
+    const uint32_t cycles = s_cycles_sum.exchange(0, std::memory_order_relaxed);
     st.underruns = s_underruns.load(std::memory_order_relaxed);
     st.blocks = s_blocks.load(std::memory_order_relaxed);
     st.render_us_max = s_render_us_max.exchange(0, std::memory_order_relaxed);
     const uint32_t sum = s_render_us_sum.exchange(0, std::memory_order_relaxed);
     const uint32_t cnt = s_render_count.exchange(0, std::memory_order_relaxed);
     st.render_us_avg = cnt ? sum / cnt : 0;
+    st.render_cycles_avg = cnt ? cycles / cnt : 0;
     return st;
 }
 

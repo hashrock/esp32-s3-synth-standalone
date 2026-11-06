@@ -1,0 +1,108 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+load:0x403cb700,len:0x2f58
+entry 0x403c8908
+I (24) boot: ESP-IDF v6.1-dev-2938-g12f36a021f-dirty 2nd stage bootloader
+I (25) boot: compile time Nov  3 2026 00:23:20
+I (25) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (30) boot: efuse block revision: v1.4
+I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+I (37) boot.esp32s3: SPI Mode       : DIO
+I (41) boot.esp32s3: SPI Flash Size : 16MB
+I (45) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+I (78) boot: End of partition table
+I (81) esp_image: segment 0: paddr=00010020 vaddr=3c030020 size=0ebd0h ( 60368) map
+I (99) esp_image: segment 1: paddr=0001ebf8 vaddr=3fc91600 size=01420h (  5152) load
+I (101) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=22d40h (142656) map
+I (129) esp_image: segment 3: paddr=00042d68 vaddr=3fc92a20 size=032cch ( 13004) load
+I (132) esp_image: segment 4: paddr=0004603c vaddr=40374000 size=0d584h ( 54660) load
+I (145) esp_image: segment 5: paddr=000535c8 vaddr=50000000 size=00024h (    36) load
+I (151) boot: Loaded app from partition at offset 0x10000
+I (151) boot: Disabling RNG early entropy source...
+I (163) cpu_start: Multicore app
+I (172) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (172) cpu_start: Pro cpu start user code
+I (172) cpu_start: cpu freq: 240000000 Hz
+I (174) app_init: Application information:
+I (178) app_init: Project name:     epiano
+I (182) app_init: App version:      6d21a29-dirty
+I (186) app_init: Compile time:     Nov  7 2026 03:30:59
+I (191) app_init: ELF file SHA256:  488b42fc3...
+I (195) app_init: ESP-IDF:          v6.1-dev-2938-g12f36a021f-dirty
+I (201) efuse_init: Min chip rev:     v0.0
+I (205) efuse_init: Max chip rev:     v0.99 
+I (209) efuse_init: Chip rev:         v0.2
+I (213) heap_init: Initializing. RAM available for dynamic allocation:
+I (219) heap_init: At 3FCB35A0 len 00036170 (216 KiB): RAM
+I (224) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (230) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (235) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (241) spi_flash: detected chip: generic
+I (244) spi_flash: flash io: dio
+I (247) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (253) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (260) main_task: Started on CPU0
+I (291) main_task: Calling app_main()
+I (291) main: epiano: physical Rhodes + FM, 16 voice slots
+I (327) audio: I2S started: 48000 Hz, 16bit stereo, block=64 frames, dma_desc=4 (buffer 5.33 ms)
+I (328) audio: pins: BCLK=16 LRCK=17 DOUT=18
+I (360) usb_midi: USB host started, waiting for MIDI device
+I (1491) usb_midi: device connected: VID=0944 PID=0136
+I (1491) usb_midi: MIDI streaming: interface 0 alt 0, bulk IN ep 0x82, MPS 64
+I (7429) main: [Rhodes bench] preset=0 base=0 voices=8 phase=attack avg_us=491 max_us=1272 avg_cycles=117688 max_cycles=305047 missed=0 qovf=0 clip=144 peak=0.800
+I (9432) main: [Rhodes bench] preset=0 base=0 voices=8 phase=sustain avg_us=414 max_us=449 avg_cycles=99203 max_cycles=106731 missed=0 qovf=0 clip=0 peak=0.073
+I (9835) main: [Rhodes bench] preset=0 base=0 voices=8 phase=retrigger avg_us=859 max_us=1020 avg_cycles=206008 max_cycles=244535 missed=0 qovf=0 clip=3430 peak=1.018
+I (11938) main: [Rhodes bench] preset=0 base=24 voices=8 phase=attack avg_us=434 max_us=1257 avg_cycles=104102 max_cycles=301540 missed=0 qovf=0 clip=52 peak=0.794
+I (13941) main: [Rhodes bench] preset=0 base=24 voices=8 phase=sustain avg_us=414 max_us=454 avg_cycles=99143 max_cycles=108641 missed=0 qovf=0 clip=0 peak=0.103
+I (14344) main: [Rhodes bench] preset=0 base=24 voices=8 phase=retrigger avg_us=1152 max_us=1291 avg_cycles=276417 max_cycles=309535 missed=0 qovf=0 clip=52 peak=0.794
+I (16447) main: [Rhodes bench] preset=0 base=60 voices=8 phase=attack avg_us=382 max_us=1107 avg_cycles=91612 max_cycles=265408 missed=0 qovf=0 clip=13 peak=0.738
+I (18450) main: [Rhodes bench] preset=0 base=60 voices=8 phase=sustain avg_us=380 max_us=432 avg_cycles=90990 max_cycles=102858 missed=0 qovf=0 clip=0 peak=0.163
+I (18853) main: [Rhodes bench] preset=0 base=60 voices=8 phase=retrigger avg_us=507 max_us=1104 avg_cycles=121552 max_cycles=264889 missed=0 qovf=0 clip=284 peak=0.751
+I (20956) main: [Rhodes bench] preset=0 base=76 voices=8 phase=attack avg_us=321 max_us=929 avg_cycles=76889 max_cycles=222858 missed=0 qovf=0 clip=0 peak=0.687
+I (22959) main: [Rhodes bench] preset=0 base=76 voices=8 phase=sustain avg_us=320 max_us=368 avg_cycles=76645 max_cycles=87392 missed=0 qovf=0 clip=0 peak=0.144
+I (23362) main: [Rhodes bench] preset=0 base=76 voices=8 phase=retrigger avg_us=367 max_us=915 avg_cycles=87913 max_cycles=219417 missed=0 qovf=0 clip=228 peak=0.884
+I (25465) main: [Rhodes bench] preset=0 base=100 voices=8 phase=attack avg_us=293 max_us=911 avg_cycles=70133 max_cycles=218366 missed=0 qovf=0 clip=0 peak=0.386
+I (27468) main: [Rhodes bench] preset=0 base=100 voices=8 phase=sustain avg_us=292 max_us=348 avg_cycles=69938 max_cycles=82477 missed=0 qovf=0 clip=0 peak=0.037
+I (27871) main: [Rhodes bench] preset=0 base=100 voices=8 phase=retrigger avg_us=330 max_us=889 avg_cycles=79041 max_cycles=213123 missed=0 qovf=0 clip=0 peak=0.386
+I (29974) main: [Rhodes bench] preset=5 base=0 voices=8 phase=attack avg_us=490 max_us=1262 avg_cycles=117518 max_cycles=302617 missed=0 qovf=0 clip=316 peak=0.885
+I (31977) main: [Rhodes bench] preset=5 base=0 voices=8 phase=sustain avg_us=414 max_us=440 avg_cycles=99196 max_cycles=105437 missed=0 qovf=0 clip=0 peak=0.073
+I (32380) main: [Rhodes bench] preset=5 base=0 voices=8 phase=retrigger avg_us=854 max_us=991 avg_cycles=204895 max_cycles=237793 missed=0 qovf=0 clip=6434 peak=1.213
+I (34483) main: [Rhodes bench] preset=5 base=24 voices=8 phase=attack avg_us=434 max_us=1262 avg_cycles=104063 max_cycles=302594 missed=0 qovf=0 clip=454 peak=0.883
+I (36486) main: [Rhodes bench] preset=5 base=24 voices=8 phase=sustain avg_us=414 max_us=466 avg_cycles=99215 max_cycles=110776 missed=0 qovf=0 clip=0 peak=0.117
+I (36889) main: [Rhodes bench] preset=5 base=24 voices=8 phase=retrigger avg_us=1143 max_us=1287 avg_cycles=274205 max_cycles=308554 missed=0 qovf=0 clip=2457 peak=0.884
+I (38992) main: [Rhodes bench] preset=5 base=60 voices=8 phase=attack avg_us=382 max_us=1104 avg_cycles=91600 max_cycles=264795 missed=0 qovf=0 clip=53 peak=0.862
+I (40995) main: [Rhodes bench] preset=5 base=60 voices=8 phase=sustain avg_us=380 max_us=446 avg_cycles=90996 max_cycles=106077 missed=0 qovf=0 clip=0 peak=0.186
+I (41398) main: [Rhodes bench] preset=5 base=60 voices=8 phase=retrigger avg_us=505 max_us=1118 avg_cycles=121029 max_cycles=267919 missed=0 qovf=0 clip=1041 peak=0.872
+I (43501) main: [Rhodes bench] preset=5 base=76 voices=8 phase=attack avg_us=321 max_us=936 avg_cycles=76884 max_cycles=224274 missed=0 qovf=0 clip=19 peak=0.833
+I (45504) main: [Rhodes bench] preset=5 base=76 voices=8 phase=sustain avg_us=320 max_us=373 avg_cycles=76647 max_cycles=88700 missed=0 qovf=0 clip=0 peak=0.173
+I (45907) main: [Rhodes bench] preset=5 base=76 voices=8 phase=retrigger avg_us=366 max_us=916 avg_cycles=87753 max_cycles=219510 missed=0 qovf=0 clip=362 peak=1.114
+I (48010) main: [Rhodes bench] preset=5 base=100 voices=8 phase=attack avg_us=292 max_us=875 avg_cycles=70093 max_cycles=209859 missed=0 qovf=0 clip=0 peak=0.642
+I (50013) main: [Rhodes bench] preset=5 base=100 voices=8 phase=sustain avg_us=292 max_us=347 avg_cycles=69950 max_cycles=83169 missed=0 qovf=0 clip=0 peak=0.049
+I (50416) main: [Rhodes bench] preset=5 base=100 voices=8 phase=retrigger avg_us=327 max_us=857 avg_cycles=78509 max_cycles=205446 missed=0 qovf=0 clip=0 peak=0.641
+I (52519) main: [Rhodes bench] preset=6 base=0 voices=8 phase=attack avg_us=494 max_us=1269 avg_cycles=118499 max_cycles=304235 missed=0 qovf=0 clip=41 peak=0.713
+I (54522) main: [Rhodes bench] preset=6 base=0 voices=8 phase=sustain avg_us=417 max_us=462 avg_cycles=99873 max_cycles=110873 missed=0 qovf=0 clip=0 peak=0.132
+I (54925) main: [Rhodes bench] preset=6 base=0 voices=8 phase=retrigger avg_us=866 max_us=1042 avg_cycles=207784 max_cycles=249882 missed=0 qovf=0 clip=2285 peak=1.231
+I (57228) main: [Rhodes bench] preset=6 base=24 voices=8 phase=attack avg_us=437 max_us=1263 avg_cycles=104823 max_cycles=302812 missed=0 qovf=0 clip=0 peak=0.399
+I (59231) main: [Rhodes bench] preset=6 base=24 voices=8 phase=sustain avg_us=417 max_us=481 avg_cycles=99889 max_cycles=115386 missed=0 qovf=0 clip=0 peak=0.149
+I (59634) main: [Rhodes bench] preset=6 base=24 voices=8 phase=retrigger avg_us=1162 max_us=1289 avg_cycles=278785 max_cycles=308518 missed=0 qovf=0 clip=203 peak=0.835
+I (61937) main: [Rhodes bench] preset=6 base=60 voices=8 phase=attack avg_us=385 max_us=1108 avg_cycles=92347 max_cycles=265758 missed=0 qovf=0 clip=0 peak=0.515
+I (63940) main: [Rhodes bench] preset=6 base=60 voices=8 phase=sustain avg_us=382 max_us=430 avg_cycles=91685 max_cycles=102916 missed=0 qovf=0 clip=0 peak=0.220
+I (64343) main: [Rhodes bench] preset=6 base=60 voices=8 phase=retrigger avg_us=512 max_us=1153 avg_cycles=122645 max_cycles=276396 missed=0 qovf=0 clip=248 peak=0.890
+I (66646) main: [Rhodes bench] preset=6 base=76 voices=8 phase=attack avg_us=324 max_us=942 avg_cycles=77598 max_cycles=225756 missed=0 qovf=0 clip=6 peak=0.743
+I (68649) main: [Rhodes bench] preset=6 base=76 voices=8 phase=sustain avg_us=323 max_us=358 avg_cycles=77338 max_cycles=85720 missed=0 qovf=0 clip=0 peak=0.182
+I (69052) main: [Rhodes bench] preset=6 base=76 voices=8 phase=retrigger avg_us=371 max_us=921 avg_cycles=89021 max_cycles=220839 missed=0 qovf=0 clip=140 peak=0.972
+I (71355) main: [Rhodes bench] preset=6 base=100 voices=8 phase=attack avg_us=295 max_us=937 avg_cycles=70820 max_cycles=224829 missed=0 qovf=0 clip=0 peak=0.311
+I (73358) main: [Rhodes bench] preset=6 base=100 voices=8 phase=sustain avg_us=295 max_us=357 avg_cycles=70661 max_cycles=85513 missed=0 qovf=0 clip=0 peak=0.032
+I (73761) main: [Rhodes bench] preset=6 base=100 voices=8 phase=retrigger avg_us=335 max_us=919 avg_cycles=80313 max_cycles=220301 missed=0 qovf=0 clip=0 peak=0.313
+I (75264) main: [Rhodes stress] DONE

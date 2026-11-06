@@ -6,7 +6,8 @@
 namespace synth {
 
 constexpr int kNumVoices = 16;
-constexpr int kNumPresets = 4;
+constexpr int kNumPresets = 7;
+constexpr int kDefaultPreset = 5; // Bark; preserve existing Program Change numbers
 
 // シンセを初期化する（audio::start より前に呼ぶ）
 void init();
@@ -28,7 +29,7 @@ void render(int16_t *out, size_t frames, void *ctx);
 // 統計
 int active_voices();
 uint32_t voice_steals();
-uint32_t clipped_samples();  // ソフトクリップ域に入ったサンプル数（累計）
+uint32_t clipped_samples();  // リミッター前の上限超過サンプル数（累計、旧API名）
 float take_peak();           // 前回呼び出し以降のピーク（クリップ前、1.0 = フルスケール）
 
 }  // namespace synth

@@ -4,7 +4,9 @@
 // kRunTestSequence = true にすると Phase 2 の内部テストシーケンスを流す
 
 #include <cmath>
+#include <initializer_list>
 #include <cstdint>
+#include "sdkconfig.h"
 
 #include "audio/audio_output.h"
 #include "audio/synth.h"
@@ -25,7 +27,7 @@ constexpr int kMidiChannel = -1;
 
 // ---- MIDI → シンセ ----------------------------------------------------------
 
-int s_preset = 0;  // USB MIDI タスク内でのみ触る
+int s_preset = synth::kDefaultPreset;  // USB MIDI タスク内でのみ触る
 
 void set_preset(int index) {
     s_preset = index % synth::kNumPresets;
@@ -34,6 +36,9 @@ void set_preset(int index) {
 }
 
 void on_midi(uint8_t status, uint8_t d1, uint8_t d2) {
+#ifdef CONFIG_EPIANO_RHODES_STRESS
+    return; // Keep external playing from contaminating the automatic benchmark.
+#endif
     const uint8_t type = status & 0xf0;
     const uint8_t ch = status & 0x0f;
     if (kMidiChannel >= 0 && ch != kMidiChannel) return;
@@ -188,7 +193,57 @@ void stress_test() {
             wait_ms(200);
         }
     }
-    synth::set_preset(0);
+    synth::set_preset(synth::kDefaultPreset);
+}
+
+void rhodes_stress_task(void *) {
+    wait_ms(5000); // Allow the serial logger to attach after flashing.
+    for (int preset : {0, 5, 6}) {
+        synth::set_preset(preset);
+        for (int base : {0, 24, 60, 76, 100}) {
+            for (int count : {8}) {
+                synth::all_notes_off(); wait_ms(1000);
+                // Overloaded 16-voice release can take longer than one wall-clock
+                // second. Wait for actual silence before measuring the next case.
+                int settle = 0;
+                while (synth::active_voices() && settle++ < 100) wait_ms(50);
+                if (synth::active_voices()) {
+                    ESP_LOGE(TAG, "[Rhodes stress] failed to settle");
+                    vTaskDelete(nullptr);
+                }
+                wait_ms(100);
+                auto previous = audio::take_stats();
+                synth::take_peak();
+                uint32_t clips = synth::clipped_samples();
+                auto report = [&](const char *phase) {
+                    const auto st = audio::take_stats();
+                    const uint32_t now_clips = synth::clipped_samples();
+                    ESP_LOGI(TAG, "[Rhodes bench] preset=%d base=%d voices=%d phase=%s avg_us=%lu max_us=%lu avg_cycles=%lu max_cycles=%lu missed=%lu qovf=%lu over=%lu peak=%.3f",
+                             preset, base, count, phase,
+                             (unsigned long)st.render_us_avg, (unsigned long)st.render_us_max,
+                             (unsigned long)st.render_cycles_avg, (unsigned long)st.render_cycles_max,
+                             (unsigned long)(st.missed_deadlines-previous.missed_deadlines),
+                             (unsigned long)(st.underruns-previous.underruns),
+                             (unsigned long)(now_clips-clips), synth::take_peak());
+                    previous = st;
+                    clips = now_clips;
+                };
+                for (int i=0; i<count; ++i) synth::note_on(base+i, 127);
+                wait_ms(1000); report("attack");
+                wait_ms(2000); report("sustain");
+                for (int r=0; r<20; ++r) {
+                    for (int i=0; i<count; ++i) synth::note_on(base+i, 127);
+                    wait_ms(20);
+                }
+                report("retrigger");
+            }
+        }
+    }
+    synth::all_notes_off();
+    synth::set_preset(synth::kDefaultPreset);
+    wait_ms(1500);
+    ESP_LOGI(TAG, "[Rhodes stress] DONE");
+    vTaskDelete(nullptr);
 }
 
 void startup_chime() {
@@ -202,11 +257,15 @@ void startup_chime() {
 }
 
 extern "C" void app_main(void) {
-    ESP_LOGI(TAG, "epiano Phase 3: USB MIDI + 2-op FM, %d voices", synth::kNumVoices);
+    ESP_LOGI(TAG, "epiano: physical Rhodes + FM, %d voice slots", synth::kNumVoices);
 
     synth::init();
     ESP_ERROR_CHECK(audio::start(synth::render, nullptr));
+#ifdef CONFIG_EPIANO_RHODES_STRESS
+    xTaskCreatePinnedToCore(rhodes_stress_task, "rhodes_stress", 4096, nullptr, 5, nullptr, 0);
+#else
     startup_chime();
+#endif
     if (kRunStressTest) stress_test();
 
     if (kRunTestSequence) {
@@ -220,9 +279,12 @@ extern "C" void app_main(void) {
     uint32_t last_underruns = 0;
     for (;;) {
         wait_ms(1000);
+#ifdef CONFIG_EPIANO_RHODES_STRESS
+        continue; // The benchmark owns interval statistics while profiling.
+#endif
         const audio::Stats st = audio::take_stats();
         const float peak = synth::take_peak();
-        ESP_LOGI(TAG, "midi=%s pkts=%lu preset=%s voices=%d peak=%.2f (%.1f dBFS) clip=%lu steals=%lu underruns=%lu (+%lu) render avg=%lu us max=%lu us (load avg %.1f%% max %.1f%%)",
+        ESP_LOGI(TAG, "midi=%s pkts=%lu preset=%s voices=%d peak=%.2f (%.1f dBFS) over=%lu steals=%lu underruns=%lu (+%lu) render avg=%lu us max=%lu us (load avg %.1f%% max %.1f%%)",
                  usb_midi::connected() ? "on" : "off", (unsigned long)usb_midi::packets_received(),
                  synth::preset_name(synth::preset()),
                  synth::active_voices(), peak, peak > 0.0f ? 20.0f * log10f(peak) : -99.0f,
@@ -230,6 +292,9 @@ extern "C" void app_main(void) {
                  (unsigned long)st.underruns, (unsigned long)(st.underruns - last_underruns),
                  (unsigned long)st.render_us_avg, (unsigned long)st.render_us_max,
                  100.0f * st.render_us_avg / kBlockUs, 100.0f * st.render_us_max / kBlockUs);
+        ESP_LOGI(TAG, "render cycles avg=%lu max=%lu missed_deadlines=%lu",
+                 (unsigned long)st.render_cycles_avg, (unsigned long)st.render_cycles_max,
+                 (unsigned long)st.missed_deadlines);
         last_underruns = st.underruns;
     }
 }

@@ -1,0 +1,79 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+load:0x403cb700,len:0x2f58
+entry 0x403c8908
+I (24) boot: ESP-IDF v6.1-dev-2938-g12f36a021f-dirty 2nd stage bootloader
+I (25) boot: compile time Nov  3 2026 00:23:20
+I (25) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (30) boot: efuse block revision: v1.4
+I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+I (37) boot.esp32s3: SPI Mode       : DIO
+I (41) boot.esp32s3: SPI Flash Size : 16MB
+I (45) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+I (78) boot: End of partition table
+I (81) esp_image: segment 0: paddr=00010020 vaddr=3c030020 size=0ec50h ( 60496) map
+I (99) esp_image: segment 1: paddr=0001ec78 vaddr=3fc91600 size=013a0h (  5024) load
+I (101) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=231c4h (143812) map
+I (129) esp_image: segment 3: paddr=000431ec vaddr=3fc929a0 size=0334ch ( 13132) load
+I (132) esp_image: segment 4: paddr=00046540 vaddr=40374000 size=0d584h ( 54660) load
+I (145) esp_image: segment 5: paddr=00053acc vaddr=50000000 size=00024h (    36) load
+I (151) boot: Loaded app from partition at offset 0x10000
+I (152) boot: Disabling RNG early entropy source...
+I (163) cpu_start: Multicore app
+I (172) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (172) cpu_start: Pro cpu start user code
+I (172) cpu_start: cpu freq: 240000000 Hz
+I (174) app_init: Application information:
+I (178) app_init: Project name:     epiano
+I (182) app_init: App version:      6d21a29-dirty
+I (186) app_init: Compile time:     Nov  7 2026 03:33:37
+I (191) app_init: ELF file SHA256:  288a2dc64...
+I (195) app_init: ESP-IDF:          v6.1-dev-2938-g12f36a021f-dirty
+I (201) efuse_init: Min chip rev:     v0.0
+I (205) efuse_init: Max chip rev:     v0.99 
+I (209) efuse_init: Chip rev:         v0.2
+I (213) heap_init: Initializing. RAM available for dynamic allocation:
+I (219) heap_init: At 3FCB35A0 len 00036170 (216 KiB): RAM
+I (225) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (230) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (235) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (241) spi_flash: detected chip: generic
+I (244) spi_flash: flash io: dio
+I (247) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (253) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (260) main_task: Started on CPU0
+I (291) main_task: Calling app_main()
+I (291) main: epiano: physical Rhodes + FM, 16 voice slots
+I (327) audio: I2S started: 48000 Hz, 16bit stereo, block=64 frames, dma_desc=4 (buffer 5.33 ms)
+I (328) audio: pins: BCLK=16 LRCK=17 DOUT=18
+I (999) usb_midi: USB host started, waiting for MIDI device
+I (1999) main: midi=off pkts=0 preset=Rhodes voices=0 peak=0.17 (-15.5 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=163 us max=318 us (load avg 12.2% max 23.8%)
+I (2002) main: render cycles avg=39010 max=75607 missed_deadlines=0
+I (2130) usb_midi: device connected: VID=0944 PID=0136
+I (2130) usb_midi: MIDI streaming: interface 0 alt 0, bulk IN ep 0x82, MPS 64
+I (3008) main: midi=on pkts=0 preset=Rhodes voices=0 peak=0.00 (-99.0 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=17 us max=123 us (load avg 1.3% max 9.2%)
+I (3011) main: render cycles avg=3948 max=28606 missed_deadlines=0
+I (4017) main: midi=on pkts=0 preset=Rhodes voices=0 peak=0.00 (-99.0 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=16 us max=61 us (load avg 1.2% max 4.6%)
+I (4020) main: render cycles avg=3871 max=14433 missed_deadlines=0
+I (5026) main: midi=on pkts=1 preset=Rhodes voices=1 peak=0.06 (-24.3 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=21 us max=216 us (load avg 1.6% max 16.2%)
+I (5029) main: render cycles avg=5122 max=51558 missed_deadlines=0
+I (6035) main: midi=on pkts=8 preset=Rhodes voices=3 peak=0.11 (-19.2 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=99 us max=238 us (load avg 7.4% max 17.9%)
+I (6038) main: render cycles avg=23576 max=56714 missed_deadlines=0
+I (7044) main: midi=on pkts=15 preset=Rhodes voices=3 peak=0.06 (-23.7 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=137 us max=324 us (load avg 10.3% max 24.3%)
+I (7047) main: render cycles avg=32746 max=77519 missed_deadlines=0
+I (8053) main: midi=on pkts=17 preset=Rhodes voices=1 peak=0.06 (-23.7 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=115 us max=198 us (load avg 8.6% max 14.8%)
+I (8056) main: render cycles avg=27437 max=47291 missed_deadlines=0
+I (9062) main: midi=on pkts=19 preset=Rhodes voices=3 peak=0.11 (-19.3 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=134 us max=242 us (load avg 10.0% max 18.1%)
+I (9065) main: render cycles avg=32134 max=57853 missed_deadlines=0
+I (10071) main: midi=on pkts=31 preset=Rhodes voices=8 peak=0.18 (-14.9 dBFS) clip=0 steals=0 underruns=0 (+0) render avg=312 us max=472 us (load avg 23.4% max 35.4%)

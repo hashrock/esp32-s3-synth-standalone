@@ -1,0 +1,16 @@
+menu "E-piano"
+config EPIANO_RHODES_VOICES
+    int "Physical Rhodes voice limit"
+    range 1 8
+    default 8
+    help
+        Other presets retain 16 voices. The optimized physical engine has
+        been profiled with up to eight simultaneous voices.
+config EPIANO_RHODES_STRESS
+    bool "Run physical Rhodes profiling sequence at startup"
+    default n
+    help
+        Runs all three Rhodes presets with 8 voices across five registers.
+        Includes hard simultaneous attacks, sustain, low/high registers and
+        fast retriggers. May underrun until performance is validated.
+endmenu

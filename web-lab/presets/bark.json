@@ -1,0 +1,19 @@
+{
+  "format": "epiano-tone",
+  "version": 1,
+  "settings": {
+    "name": "Bark",
+    "stiffness": 0.39,
+    "damping": 0.01,
+    "cutoff": 10000,
+    "drive": 0.25,
+    "release_seconds": 0.041,
+    "pickup_mix": 0.6,
+    "pickup_gap": 0.00132,
+    "pickup_offset": -0.00011,
+    "volume": 1,
+    "velocity_timbre": true,
+    "saturate_output": false,
+    "tremolo": false
+  }
+}
